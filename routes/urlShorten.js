@@ -3,7 +3,7 @@ const { Url } = require('../db')
 
 const router = Router();
 
-function RandomTag(len){
+function RandomTag(){
 const characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
   let randomId = '';
   for (let i = 0; i < 6; i++) {
@@ -13,22 +13,51 @@ const characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 }
 router.post('/short', async(req,res)=> {
     const url = req.body.url;
+    const tag = req.body.tag;
+    console.log(tag)
    try {
-    const tag = RandomTag()
-    const dbUrl = await Url.findOne({url})
+    if(!tag){
+        const newTag = RandomTag()
+        const dbUrl = await Url.findOne({newTag})
+        if(dbUrl!==null && dbUrl.tag && dbUrl.url===url){
+            return res.status(200).json({
+                shortenUrl: dbUrl.tag
+            })
+        }         
+        else{
+            const newTag = RandomTag()
+            const dbUrl = await Url.create({
+                tag: newTag,
+                url: url
+            })
+            return res.status(201).json({
+                shortenUrl: dbUrl.tag
+            })
+        }
+    }
 
-    if(dbUrl){
+    const tagwithUrl = await Url.findOne({tag})
+    if(tagwithUrl!==null && tagwithUrl.tag && tagwithUrl.url === url){
         return res.status(200).json({
-            shortenUrl: dbUrl.tag
+            shortenUrl: tagwithUrl.tag
         })
     }
-    const shorten = await Url.create({
-        tag:tag,
-        url:url
-    })
-    res.status(201).json({
-        shortenUrl: shorten.tag
-    })
+    else if(tagwithUrl!==null && tagwithUrl.url !== url && tagwithUrl.tag){
+        return res.status(400).json({
+            message: "Enter a new tag"
+        })
+    }
+  
+    if(!tagwithUrl){
+        const shorten = await Url.create({
+            tag:tag,
+            url:url
+        })
+        res.status(201).json({
+            shortenUrl: shorten.tag
+        })
+    }
+  
    } catch (error) {
         res.status(500).json({
             errorMessage: error.message
